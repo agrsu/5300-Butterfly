@@ -59,7 +59,7 @@ std::string printTableInformation(TableRef* table) {
 		case kJoinRightOuter: joinType = "RIGHT OUTER JOIN"; break;
 		case kJoinOuter: joinType = "OUTER JOIN"; break;
 		case kJoinLeft: joinType = "LEFT JOIN"; break;
-		case kJoinRight: joinType = "RIGHT JOIN"; break;	
+		case kJoinRight: joinType = "RIGHT JOIN"; break;
 		case kJoinCross: joinType = "CROSS JOIN"; break;
 		case kJoinNatural: joinType = "NATURAL JOIN"; break;
 		}
@@ -373,6 +373,3 @@ int main()
 	}
 	return 0;
 }
-
-
-
