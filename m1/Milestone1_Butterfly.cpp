@@ -14,9 +14,9 @@ using namespace hsql;
 using namespace std;
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^
 * Function Declarations
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^
 */
 std::string printExpression(Expr* expr);
 std::string printSelectStat(const SelectStatement* stmt);
@@ -24,30 +24,29 @@ std::string printTableInformation(TableRef* table);
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^
 * Print table information
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^
 */
 std::string printTableInformation(TableRef* table) {
 
 	std::string tableStr = "";
-
-	std::string leftTableName;
 	std::string rightTableName;
 	std::string joinCondition;
+	std::string leftTableName;
 	std::string joinType;
 
 	switch (table->type) {
 
-	case kTableName:
+	case kTableN:                   //Name
 		tableStr += table->name;
 		break;
 
-	case kTableSelect:
+	case kTableS:                   //Select
 		tableStr += printSelectStat(table->select);
 		break;
 
-	case kTableJoin: {
+	case kTableJ: {                //Joins
 
 		leftTableName = printTableInformation(table->join->left);
 		rightTableName = printTableInformation(table->join->right);
@@ -56,11 +55,11 @@ std::string printTableInformation(TableRef* table) {
 		switch (table->join->type) {
 
 		case kJoinInner: joinType = "INNER JOIN"; break;
-		case kJoinOuter: joinType = "OUTER JOIN"; break;
-		case kJoinLeft: joinType = "LEFT JOIN"; break;
-		case kJoinRight: joinType = "RIGHT JOIN"; break;
 		case kJoinLeftOuter: joinType = "LEFT OUTER JOIN"; break;
 		case kJoinRightOuter: joinType = "RIGHT OUTER JOIN"; break;
+		case kJoinOuter: joinType = "OUTER JOIN"; break;
+		case kJoinLeft: joinType = "LEFT JOIN"; break;
+		case kJoinRight: joinType = "RIGHT JOIN"; break;	
 		case kJoinCross: joinType = "CROSS JOIN"; break;
 		case kJoinNatural: joinType = "NATURAL JOIN"; break;
 		}
@@ -77,7 +76,7 @@ std::string printTableInformation(TableRef* table) {
 		break;
 	}
 
-	case kTableCrossProduct:
+	case kTableCP:             //Cross Product
 		for (TableRef* temp : *table->list)
 			tableStr += printTableInformation(temp);
 		break;
@@ -91,9 +90,9 @@ std::string printTableInformation(TableRef* table) {
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Print Operator information
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 */
 std::string printOperatorExpression(Expr* expr) {
 
@@ -139,9 +138,9 @@ std::string printOperatorExpression(Expr* expr) {
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Print Operator information
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^^^^
 */
 std::string printExpression(Expr* expr) {
 
@@ -196,9 +195,9 @@ std:string exprString = "";
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-* Print Select statement
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Print Select statement (In sequence)
+* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 */
 string printSelectStat(const SelectStatement* stmt) {
 
@@ -253,9 +252,9 @@ string printSelectStat(const SelectStatement* stmt) {
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^
 * Print Create statement
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^
 */
 std::string printCreateStatement(const CreateStatement* stmt2) {
 
@@ -288,9 +287,9 @@ std::string printCreateStatement(const CreateStatement* stmt2) {
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^^
 * Generic Print statement
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^^^^^^^^
 */
 void printStatement(const SQLStatement* stmt, StatementType stmtType) {
 
@@ -312,9 +311,9 @@ void printStatement(const SQLStatement* stmt, StatementType stmtType) {
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^^^
 * Execute Method
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^^^^^^^^^^^
 */
 void execute(const SQLStatement* stmt) {
 
@@ -323,9 +322,9 @@ void execute(const SQLStatement* stmt) {
 
 
 /*
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^
 * Main
-* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ^^^^^
 */
 int main()
 {
