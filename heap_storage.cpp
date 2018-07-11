@@ -84,11 +84,32 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
 }
 
 bool SlottedPage::has_room(u_int16_t size) {
-	//implement
+	u16 free = this->end_free - ((this->num_records + 1) * 4);
+    return (size <= free);
 }
 
 void SlottedPage::slide(u_int16_t start, u_int16_t end) {
-	//implement
+	u16 shift = end - start;
+
+	if (shift == 0)
+    	return;
+
+	u16 size, loc;
+
+	memcpy(this->address(end_free + 1), this->address(end_free + 1 + shift), shift);
+
+	RecordIDs* recID = ids();
+	for (unsigned int i = 0; i < recID->size(); i++){
+		RecordID id = recID->at(id);
+		get_header(size, loc, id);
+		if (loc <= start) {
+			loc += shift;
+			put_header(id, size, loc);
+		}
+	}
+
+	end_free += shift;
+	put_header();
 }
 
 // Get 2-byte integer at given offset in block.
