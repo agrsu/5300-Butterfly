@@ -144,21 +144,31 @@ void* SlottedPage::address(u16 offset) {
 /*
 	PUBLIC
 */
-
+HeapFile::HeapFile(std::string name) : DbFile(name), dbfilename(""), last(0), closed(true), db(_DB_ENV, 0) {
+	this->dbfilename = this->name + ".db";
+}
 void HeapFile::create(void) {
-	//implement
+	//create physical file
+	db_open(DB_CREATE | DB_EXCL);
+	get_new();
 }
 
 void HeapFile::drop(void) {
-	//implement
+	//delete physial file
+	close();
+	Db db(_DB_ENV, 0);
+	db.remove(this->dbfilename.c_str(), nullptr, 0);
 }
 
 void HeapFile::open(void) {
-	//implement
+	//Open physical file
+	db_open();
 }
 
 void HeapFile::close(void) {
-	//implement
+	//Close the  physical file
+	this->db.close(0);
+	this->closed = true;
 }
 
 // Allocate a new block for the database file.
@@ -183,11 +193,18 @@ SlottedPage* HeapFile::get(BlockID block_id) {
 }
 
 void HeapFile::put(DbBlock* block) {
-	//implement
+	
+	int block_id = block->get_block_id();
+	Dbt key(&block_id, sizeof(block_id));
+	this->db.put(nullptr, &key, block->get_block(), 0);
 }
 
 BlockIDs* HeapFile::block_ids() {
-	//implement
+	
+	BlockIDs* vec = new BlockIDs();
+	for (BlockID block_id = 1; block_id <= this->last; block_id++)
+		vec->push_back(block_id);
+	return vec;
 }
 
 
@@ -195,8 +212,14 @@ BlockIDs* HeapFile::block_ids() {
 	PROTECTED
 */
 
-void HeapFile::db_open(uint flags = 0) {
-	//implement
+void HeapFile::db_open(uint flags ) {
+	
+	if (!this->closed)
+		return;
+	this->db.set_re_len(DB_BLOCK_SZ); // record length - will be ignored if file already exists
+	this->db.open(nullptr, this->dbfilename.c_str(), nullptr, DB_RECNO, flags, 0644);
+	this->last = flags ? 0 : get_block_count();
+	this->closed = false;
 }
 
 #pragma endregion
@@ -209,40 +232,70 @@ void HeapFile::db_open(uint flags = 0) {
 	PUBLIC
 */
 
+HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes) :
+	DbRelation(table_name, column_names, column_attributes), file(table_name) {
+}
+
 void HeapTable::create() {
-	//implement
+	
+
+	file.create();
 }
 
 void HeapTable::create_if_not_exists() {
-	//implement
+	
+
+	try {
+		open();
+	}
+	catch (DbException& e) {
+		create();
+	}
 }
 
 void HeapTable::drop() {
-	//implement
+	
+	file.drop();
 }
 
 void HeapTable::open() {
-	//implement
+	
+	file.open();
 }
 
 void HeapTable::close() {
-	//implement
+	
+	file.close();
 }
 
 Handle HeapTable::insert(const ValueDict* row) {
-	//implement
+	
+	open();
+	ValueDict* full_row = validate(row);
+	Handle handle = append(full_row);
+	delete full_row;
+	return handle;
 }
 
 void HeapTable::update(const Handle handle, const ValueDict* new_values) {
-	//implement
+	
+	throw DbRelationError("Not implemented");
 }
 
 void HeapTable::del(const Handle handle) {
-	//implement
+	
+	open();
+	BlockID block_id = handle.first;
+	RecordID record_id = handle.second;
+	SlottedPage* block = this->file.get(block_id);
+	block->del(record_id);
+	this->file.put(block);
+	delete block;
 }
 
 Handles* HeapTable::select() {
-	//implement
+	
+	return select(nullptr);
 }
 
 Handles* HeapTable::select(const ValueDict* where) {
@@ -261,11 +314,26 @@ Handles* HeapTable::select(const ValueDict* where) {
 }
 
 ValueDict* HeapTable::project(Handle handle) {
-	//implement
+	return project(handle, &this->column_names);
 }
 
 ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names) {
-	//implement
+	BlockID block_id = handle.first;
+	RecordID record_id = handle.second;
+	SlottedPage* block = file.get(block_id);
+	Dbt* data = block->get(record_id);
+	ValueDict* row = unmarshal(data);
+	delete data;
+	delete block;
+	if (column_names->empty())
+		return row;
+	ValueDict* result = new ValueDict();
+	for (auto const& column_name : *column_names) {
+		if (row->find(column_name) == row->end())
+			throw DbRelationError("table does not have column named '" + column_name + "'");
+		(*result)[column_name] = (*row)[column_name];
+	}
+	return result;
 }
 
 
@@ -274,11 +342,35 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names) {
 */
 
 ValueDict* HeapTable::validate(const ValueDict* row) {
-	//implement
+	alueDict* full_row = new ValueDict();
+	for (auto const& column_name : this->column_names) {
+		Value value;
+		ValueDict::const_iterator column = row->find(column_name);
+		if (column == row->end())
+			throw DbRelationError("don't know how to handle NULLs, defaults, etc. yet");
+		else
+			value = column->second;
+		(*full_row)[column_name] = value;
+	}
+	return full_row;
 }
 
 Handle HeapTable::append(const ValueDict* row) {
-	//implement
+	Dbt* data = marshal(row);
+	SlottedPage* block = this->file.get(this->file.get_last_block_id());
+	RecordID record_id;
+	try {
+		record_id = block->add(data);
+	}
+	catch (DbBlockNoRoomError& e) {
+		// need a new block
+		block = this->file.get_new();
+		record_id = block->add(data);
+	}
+	this->file.put(block);
+	delete[](char*)data->get_data();
+	delete data;
+	return Handle(this->file.get_last_block_id(), record_id);
 }
 
 // return the bits to go into the file
