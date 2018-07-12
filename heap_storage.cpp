@@ -41,7 +41,12 @@ RecordID SlottedPage::add(const Dbt* data) throw(DbBlockNoRoomError) {
 }
 
 Dbt* SlottedPage::get(RecordID record_id) {
-	//implement
+	u16 size, loc;
+	get_header(size, loc, record_id);
+	if (loc == NULL)
+		return NULL;
+	Dbt* temp = new Dbt(this->address(loc), size);
+	return temp;
 }
 
 void SlottedPage::put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomError) {
@@ -49,7 +54,10 @@ void SlottedPage::put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomEr
 }
 
 void SlottedPage::del(RecordID record_id) {
-
+	u16 size, loc;
+	get_header(size, loc, record_id);
+	put_header(record_id, 0, 0);
+	slide(loc, loc + size);
 }
 
 RecordIDs* SlottedPage::ids(void) {
@@ -85,21 +93,20 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
 
 bool SlottedPage::has_room(u_int16_t size) {
 	u16 free = this->end_free - ((this->num_records + 1) * 4);
-    return (size <= free);
+	return (size <= free);
 }
 
 void SlottedPage::slide(u_int16_t start, u_int16_t end) {
 	u16 shift = end - start;
 
 	if (shift == 0)
-    	return;
-
-	u16 size, loc;
+		return;
 
 	memcpy(this->address(end_free + 1), this->address(end_free + 1 + shift), shift);
 
+	u16 size, loc;
 	RecordIDs* recID = ids();
-	for (unsigned int i = 0; i < recID->size(); i++){
+	for (unsigned int i = 0; i < recID->size(); i++) {
 		RecordID id = recID->at(id);
 		get_header(size, loc, id);
 		if (loc <= start) {
