@@ -51,6 +51,7 @@ Dbt* SlottedPage::get(RecordID record_id) {
 
 void SlottedPage::put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomError) {
 	//implement
+	u16 size, loc;
 }
 
 void SlottedPage::del(RecordID record_id) {
