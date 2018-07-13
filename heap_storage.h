@@ -90,6 +90,7 @@ protected:
 	u_int32_t last;
 	bool closed;
 	Db db;
+	virtual uint32_t get_block_count();
 	virtual void db_open(uint flags=0);
 };
 
