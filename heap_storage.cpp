@@ -237,7 +237,7 @@ void HeapFile::db_open(uint flags) {
 	this->db.set_re_len(DbBlock::BLOCK_SZ); // record length - will be ignored if file already exists
 	this->dbfilename = this->name + ".db";
 	this->db.open(nullptr, this->dbfilename.c_str(), nullptr, DB_RECNO, flags, 0644);
-	this->last = db.get(DB_LAST);
+	this->last = flags ? 0 : get_block_count();
 	this->closed = false;
 }
 
