@@ -154,51 +154,155 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
 
 // DROP ...
 QueryResult *SQLExec::drop(const DropStatement *statement) {
-	if (statement->type != DropStatment::kTable)
-		return new QueryResult("Drop table called with other statement type");
-	
-	Identifier tableName = statement->name;
-	
-	//Check if table is schema table (not allowed to be dropped)
-	if (tableName == Tables::TABLE_NAME || tableName == Columns::TABLE_NAMES)
-		throw SQLExecError("Cannot drop a schema table");
+  switch(statement->type) {
+  case DropStatement::kTable:
+    return drop_table(statement);
+  case DropStatement::kIndex:
+    return drop_index(statement);
+  default:
+    return new QueryResult("unsupported DROP type");
+  }
+}
+QueryResult *SQLExec::drop_table(const DropStatement *statement) {
+  if (statement->type != DropStatment::kTable)
+    return new QueryResult("Drop table called with other statement type");
 
-	//Get table information
-	DbRelation& table = SQLExec::tables->get_table(tableName);
-	ValueDict dropTarget;
-	locationValDict["table_name"] = Value(tableName);
-	DbRelation& cols = SQLExec:tables->get_table(Columns::TABLE_NAME);
-	Handles* handles = cols.select(&locationValDict);
+  Identifier tableName = statement->name;
 
-	//TODO M4: Remove indices
-	DbRelation& indices = SQLExec::tables->get_table(Indices::TABLE_NAME);
-	Handles* index_handles = indices.select(&locationValDict);
-	vector<Value> dropList;
-	
-	//for(unsigned int i = 0; i < index_handles->size(); i++) {
-	//	ValueDict* 
-		
-	delete handles;
-	
-	//delete the table
-	table.drop();
-	
-	//delete the table from _tables
-	SQLExec::tables->del(*SQLExec::tables->select(&dropTarget)->begin()));
+  //Check if table is schema table (not allowed to be dropped)
+  if (tableName == Tables::TABLE_NAME || tableName == Columns::TABLE_NAMES)
+    throw SQLExecError("Cannot drop a schema table");
 
-	return new QueryResult("Dropped: " + tableName);	
-	
+  //Get table information
+  DbRelation& table = SQLExec::tables->get_table(tableName);
+  ValueDict dropTarget;
+	 locationValDict["table_name"] = Value(tableName);
+  DbRelation& cols = SQLExec:tables->get_table(Columns::TABLE_NAME);
+  Handles* handles = cols.select(&locationValDict);
+
+  /*TODO M4: Remove indices
+  DbRelation& indices = SQLExec::tables->get_table(Indices::TABLE_NAME);
+  Handles* index_handles = indices.select(&locationValDict);
+  vector<Value> dropList;
+  */
+  //for(unsigned int i = 0; i < index_handles->size(); i++) {
+  //ValueDict*
+
+  delete handles;
+
+  //delete the table
+  table.drop();
+
+  //delete the table from _tables
+  SQLExec::tables->del(*SQLExec::tables->select(&dropTarget)->begin());
+  return new QueryResult("Dropped: " + tableName);
 }
 
-QueryResult *SQLExec::show(const ShowStatement *statement) {
-	return new QueryResult("not implemented"); // FIXME
+/* @purpose - implement appropriate show function based on the type of
+ * statement
+ * @return - a QueryResult or error if statement type not supported
+ */
+QueryResult *SQLExec::show(const hsql::ShowStatement *statement)
+{
+  switch(statement->type){
+  case ShowStatement::kTables:
+    return show_tables();
+  case ShowStatement::kColumns:
+    return show_columns(statement);
+    //  case ShowStatement::kIndex:
+    //return show_index(statement);
+  default:
+    throw SQLExecError("SHOW type not recognized/supported");
+  }
 }
 
+/*
+QueryResult *SQLExec::show_index(const ShowStatement *statement) {
+
+  ColumnNames* colNames = new ColumnNames;
+  ColumnAttributes* colAttri = new ColumnAttributes;
+  ValueDict tableVal;
+
+  tableVal["table_name"] = Value(statement->tableName);
+  colAttri->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+  colAttri->push_back(ColumnAttribute(ColumnAttribute::INT));
+  colAttri->push_back(ColumnAttribute(ColumnAttribute::BOOLEAN));
+  colNames->push_back("table_name");
+  colNames->push_back("index_name");
+  colNames->push_back("seq_in_index");
+  colNames->push_back("index_type");
+  colNames->push_back("is_unique");
+
+  tableVal["table_name"] = Value(statement->tableName);
+  Handles* handles = SQLExec::indices->select(&tableVal);
+  u_int rowCount = handesl->size();
+
+  for(auto const& currHandle: *handles){
+    ValueDict* currRow = SQLExec::indices->project(currHandle, colNames);
+    rows->push_back(currRow);
+  }
+
+  delete handles;
+  return new QueryResult(coNames, colAttri, rows, "successfully returned " +
+                         to_string(rowCount) + " rows");
+}
+
+
+/* @purpose - execute the SQL SHOW TABLES
+ * @return - a QueryResult variable containting
+ */
 QueryResult *SQLExec::show_tables() {
-	return new QueryResult("not implemented"); // FIXME
-}
+	 ColumnNames* colNames = new ColumnNames;
+  ColumnAttributes* colAttr = new ColumnAttributes;
+  ValueDicts* rows = new ValuesDict;
 
+  //set variable values
+  Handles* handles = SQLExec::tables->select();
+  u_int rowCount = handles->size()-2;
+  colNames->push_back("table_name");
+  colAttributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+  for(auto const& currHandle: *handles){
+    ValueDict* currRow = SQLExec::tables->project(currHandle, colNames);
+    Identifier table_name = currRow->at("table_name").s;
+    if((table_name != Columns::TABLE_NAME) &&
+       (table_name != Tables::TABLE_NAME)){
+      rows->push_back(currRow);
+    }
+  }
+
+  delete handles;
+  return QueryResult(colName, colAttr, row, "successfully returned " +
+                     to_string(rowCount) + " rows");
+}
+/* @purpose - execute SHOW COLUMNS FROM sql statement
+ * @param - a statement pertaining what columns to show from
+ * @return - a queryresult of the requested show data
+ */
 QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
-	return new QueryResult("not implemented"); // FIXME
+	 DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
+
+  ColumnNames* colNames = new ColumnNames;
+  ColumnAttributes* colAttr = new ColumnAttributes;
+  ValueDicts* rows = new ValuesDict;
+  ValueDict tableVal;
+
+  tableVal["table_name"] = Value(statement->tableName);
+  Handles* handles = columns.select(&tableVal);
+  u_int rowCount = handle->size();
+
+  colNames->push_back("table_name");
+  colNames->push_back("column_name");
+  colNames->push_back("data_type");
+  colAttributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+  for(auto const& currHandle: *handles){
+    ValueDict* currRow = SQLExec::tables->project(currHandle, colNames);
+    Identifier table_name = currRow->at("table_name").s;
+  }
+
+  delete handles;
+  return QueryResult(colName, colAttr, row, "successfully returned " +
+                     to_string(rowCount) + " rows");
 }
 
